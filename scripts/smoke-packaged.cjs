@@ -34,7 +34,7 @@ async function main() {
     const health = await (await fetch(base + '/api/health')).json();
     if (health.status !== 'ok') throw new Error('Health check failed.');
     const workspaces = await (await fetch(base + '/api/workspaces')).json();
-    if (!Array.isArray(workspaces) || !workspaces.length) throw new Error('Packaged SQLite database could not be read.');
+    if (!Array.isArray(workspaces) || !workspaces.length) throw new Error('Packaged SQLite database could not be read: ' + JSON.stringify(workspaces) + '\n' + logs);
     const html = await (await fetch(base)).text();
     if (!html.includes('DeepBook Studio')) throw new Error('Packaged frontend is missing.');
     console.log('Packaged Electron runtime, SQLite, HTTP API and frontend passed.');
