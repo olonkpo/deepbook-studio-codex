@@ -1,0 +1,54 @@
+name: Build Codex macOS DMGs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex-desktop]
+
+permissions:
+  contents: read
+
+jobs:
+  build-dmg:
+    name: macOS ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            arch: x64
+            output: mac
+          - runner: macos-15
+            arch: arm64
+            output: mac-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+      - name: Install dependencies from lockfiles
+        run: |
+          npm ci --ignore-scripts
+          node node_modules/electron/install.js
+          npm --prefix backend ci
+      - name: Test with Node before rebuilding SQLite for Electron
+        run: npm test
+      - name: Compile DMG
+        run: npm run build:mac -- --${{ matrix.arch }} --publish never
+      - name: Verify packaged runtime and database
+        run: node scripts/smoke-packaged.cjs "dist/${{ matrix.output }}/DeepBook Studio.app"
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeepBook-Studio-macOS-${{ matrix.arch }}
+          path: dist/*.dmg
+          if-no-files-found: error
+          retention-days: 14
